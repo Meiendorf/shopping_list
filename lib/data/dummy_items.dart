@@ -11,7 +11,6 @@ final groceryItems = [
   GroceryItem(
       id: 'b',
       name: 'Bananas',
-      
       quantity: 5,
       category: categories[Categories.fruit]!),
   GroceryItem(
