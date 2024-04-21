@@ -16,6 +16,7 @@ class GroceryList extends StatefulWidget {
 class _GroceryListState extends State<GroceryList> {
   List<GroceryItem> _groceryItems = [];
   var _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -27,9 +28,33 @@ class _GroceryListState extends State<GroceryList> {
     final url = Uri.parse(
         'https://flutter-prep-1b036-default-rtdb.europe-west1.firebasedatabase.app/shopping-list.json');
 
-    final response = await http.get(url);
-    final Map<String, dynamic> listData = json.decode(response.body);
+    http.Response response;
+    try {
+      response = await http.get(url);
+    } catch (error) {
+      setState(() {
+        _error = 'Something went wrong. Failed to fetch data.';
+        _isLoading = false;
+      });
+      return;
+    }
 
+    if (response.statusCode >= 400) {
+      setState(() {
+        _error = 'Failed to fetch data.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (response.body == 'null') {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final Map<String, dynamic> listData = json.decode(response.body);
     final List<GroceryItem> loadedItemsList = [];
     for (final item in listData.entries) {
       final category = categories.entries.firstWhere(
@@ -66,8 +91,18 @@ class _GroceryListState extends State<GroceryList> {
     });
   }
 
-  void _removeItem(GroceryItem item) {
+  void _removeItem(GroceryItem item) async {
+    final index = _groceryItems.indexOf(item);
     setState(() => _groceryItems.remove(item));
+
+    final url = Uri.parse(
+        'https://flutter-prep-1b036-default-rtdb.europe-west1.firebasedatabase.app/shopping-list/${item.id}.json');
+
+    final response = await http.delete(url);
+
+    if (response.statusCode >= 400) {
+      setState(() => _groceryItems.insert(index, item));
+    }
   }
 
   @override
@@ -98,6 +133,12 @@ class _GroceryListState extends State<GroceryList> {
             trailing: Text(_groceryItems[index].quantity.toString()),
           ),
         ),
+      );
+    }
+
+    if (_error != null) {
+      content = Center(
+        child: Text(_error!),
       );
     }
 
